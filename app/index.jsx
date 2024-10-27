@@ -4,10 +4,12 @@ import { ImageBackground, Text, TouchableOpacity, View, Alert } from "react-nati
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library'; // To save images
 import TouchButton from "../components/TouchButton";
+import { useNavigation } from '@react-navigation/native';
 
 
 export default function App() {
   const image = require("../assets/New.jpg");
+  const navigation = useNavigation();
 
   // Request permission to access the camera
   const requestCameraPermission = async () => {
@@ -57,14 +59,21 @@ export default function App() {
 
   // Function to open gallery
   const openGallery = async () => {
-    const galleryGranted = await requestGalleryPermission();
-    if (galleryGranted) {
-      const result = await ImagePicker.launchImageLibraryAsync();
-      if (!result.canceled) {
-        console.log(result.assets);
-      }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+  
+  
+    if (!result.canceled) {
+      const uri = result.assets[0]?.uri;
+      navigation.navigate('ImageEditorScreen', { imageUri: uri });
+    } else {
+      Alert.alert('No image selected');
     }
   };
+  
 
   return (
     <View className="flex-1">
