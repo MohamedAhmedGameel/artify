@@ -52,6 +52,8 @@ export default function App() {
       if (!result.canceled) {
         // Save to gallery
         await MediaLibrary.createAssetAsync(result.assets[0].uri);
+        const uri = result.assets[0]?.uri;
+        navigation.navigate('ImageEditorScreen', { imageUri: uri });
         Alert.alert("Photo Saved", "Your photo has been saved to the gallery.");
       }
     }
