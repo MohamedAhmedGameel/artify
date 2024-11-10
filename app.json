@@ -1,7 +1,7 @@
 {
   "expo": {
-     "name": "photo-editor",
-    "slug": "photo-editor",
+     "name": "Artify",
+    "slug": "Artify",
     "version": "1.0.0",
     "plugins": [
       "expo-font",

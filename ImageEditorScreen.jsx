@@ -5,13 +5,13 @@ import {
   Alert,
   TouchableOpacity,
   Dimensions,
+  PanResponder,
   Text,
 } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import { cropImage, applyFilter, rotateImage } from "./imageUtils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute } from "@react-navigation/native";
-import { imageToMatrix, matrixToImageUri } from "./imageProcessing";
 import {
   Crop,
   RotateCcw,
@@ -30,7 +30,13 @@ import {
   Undo,
   Redo,
 } from "lucide-react-native";
-import { Canvas, Image, useImage } from "@shopify/react-native-skia";
+import {
+  Canvas,
+  Image,
+  useImage,
+  Rect,
+  useCanvasRef,
+} from "@shopify/react-native-skia";
 import { StatusBar } from "expo-status-bar";
 
 const { width, height } = Dimensions.get("window"); // Get screen dimensions
@@ -45,27 +51,52 @@ const ImageEditorScreen = ({ navigation }) => {
   );
   const [hasPermission, setHasPermission] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
+  const [isCrop, setIsCrop] = useState(false);
 
   const editedImage = useImage(imageUri);
-  if (editedImage) {
-    console.log("editedImageUri", editedImage["encodeToBytes"]);
-  }
 
-  const [imageMatrix, setImageMatrix] = useState(null);
+  const canvasRef = useCanvasRef();
 
-  useEffect(() => {
-    const loadImage = async () => {
-      if (imageUri) {
-        try {
-          const matrix = await imageToMatrix(imageUri);
-          setImageMatrix(matrix);
-        } catch (error) {
-          console.error("Error converting image to matrix:", error);
-        }
-      }
-    };
-    loadImage();
-  }, [imageUri]);
+  const [cropBox, setCropBox] = useState({
+    x: 0,
+    y: 0,
+    width: imageWidth,
+    height: imageHeight,
+  });
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderMove: (e, gestureState) => {
+      setCropBox((prev) => {
+        const newX = Math.max(
+          0,
+          Math.min(prev.x + gestureState.dx, imageWidth - prev.width)
+        );
+        const newY = Math.max(
+          0,
+          Math.min(prev.y + gestureState.dy, imageHeight - prev.height)
+        );
+        return { ...prev, x: newX, y: newY };
+      });
+    },
+  });
+
+  const resizePanResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderMove: (e, gestureState) => {
+      setCropBox((prev) => {
+        const newWidth = Math.max(
+          50,
+          Math.min(prev.width + gestureState.dx, imageWidth - prev.x)
+        );
+        const newHeight = Math.max(
+          50,
+          Math.min(prev.height + gestureState.dy, imageHeight - prev.y)
+        );
+        return { ...prev, width: newWidth, height: newHeight };
+      });
+    },
+  });
 
   const tools = [
     {
@@ -143,8 +174,8 @@ const ImageEditorScreen = ({ navigation }) => {
       name: "Warm",
       icon: Sunset,
       action: async () => {
-        // const filteredUri = await applyFilter(imageMatrix, "warm");
-        // setEditedImageUri(filteredUri);
+        const filteredUri = await applyFilter(editedImageUri, "warm");
+        setEditedImageUri(filteredUri);
       },
     },
     {
@@ -213,7 +244,7 @@ const ImageEditorScreen = ({ navigation }) => {
       {editedImage ? (
         <>
           <View className="flex-1 justify-center items-center bg-black">
-            <Canvas style={{ width, height: height - 300 }}>
+            <Canvas ref={canvasRef} style={{ width, height: height - 300 }}>
               <Image
                 image={editedImage}
                 x={0}
@@ -222,8 +253,46 @@ const ImageEditorScreen = ({ navigation }) => {
                 height={imageHeight}
                 fit="contain"
               />
+              {isCrop && (
+                <Rect
+                  x={cropBox.x}
+                  y={cropBox.y}
+                  width={cropBox.width}
+                  height={cropBox.height}
+                  color="rgba(255, 255, 255, 0.3)"
+                  strokeWidth={2}
+                  stroke="white"
+                />
+              )}
             </Canvas>
           </View>
+          {isCrop && (
+            <>
+              <View
+                style={{
+                  position: "absolute",
+                  left: cropBox.x,
+                  top: cropBox.y,
+                  width: cropBox.width,
+                  height: cropBox.height,
+                  borderColor: "white",
+                  borderWidth: 2,
+                }}
+                {...panResponder.panHandlers}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  right: imageWidth - cropBox.x - cropBox.width,
+                  bottom: imageHeight - cropBox.y - cropBox.height,
+                  width: 30,
+                  height: 30,
+                  backgroundColor: "white",
+                }}
+                {...resizePanResponder.panHandlers}
+              />
+            </>
+          )}
 
           <View className="pt-2 pb-4 bg-neutral-900 rounded-t-xl">
             <ScrollView
