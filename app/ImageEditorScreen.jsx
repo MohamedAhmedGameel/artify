@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Slider from "@react-native-community/slider";
 import {
   View,
   ScrollView,
@@ -45,13 +46,12 @@ const ImageEditorScreen = ({ navigation }) => {
   );
   const [hasPermission, setHasPermission] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
+  const [isContrastVisible, setIsContrastVisible] = useState(false); // State to toggle visibility
 
   const editedImage = useImage(imageUri);
-  if (editedImage) {
-    console.log("editedImageUri", editedImage["encodeToBytes"]);
-  }
 
   const [imageMatrix, setImageMatrix] = useState(null);
+  const [contrastValue, setContrastValue] = useState(1); // For the contrast slider
 
   useEffect(() => {
     const loadImage = async () => {
@@ -74,8 +74,6 @@ const ImageEditorScreen = ({ navigation }) => {
       icon: Crop,
       action: async () => {
         setIsCrop(true);
-        // const croppedUri = await cropImage(editedImageUri);
-        // setEditedImageUri(croppedUri);
       },
     },
     {
@@ -106,9 +104,8 @@ const ImageEditorScreen = ({ navigation }) => {
       id: "contrast",
       name: "Contrast",
       icon: Contrast,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "contrast");
-        setEditedImageUri(filteredUri);
+      action: () => {
+        setSelectedTool("contrast");
       },
     },
     {
@@ -167,6 +164,15 @@ const ImageEditorScreen = ({ navigation }) => {
     },
   ];
 
+  const handleToolSelect = (toolId) => {
+    setSelectedTool(toolId);
+    if (toolId === "contrast") {
+      setIsContrastVisible(!isContrastVisible); // Toggle the visibility of the contrast slider
+    } else {
+      setIsContrastVisible(false); // Hide the contrast slider if another tool is selected
+    }
+  };
+
   useEffect(() => {
     const requestPermission = async () => {
       const { granted } = await MediaLibrary.requestPermissionsAsync();
@@ -199,6 +205,12 @@ const ImageEditorScreen = ({ navigation }) => {
     }
   };
 
+  const handleContrastChange = (value) => {
+    setContrastValue(value);
+    const filteredUri = applyFilter(editedImageUri, "contrast", value);
+    setEditedImageUri(filteredUri);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-black">
       <StatusBar style="light" backgroundColor="#000000" />
@@ -210,6 +222,7 @@ const ImageEditorScreen = ({ navigation }) => {
           <Download size="24" color="#fff" />
         </View>
       </View>
+
       {editedImage ? (
         <>
           <View className="flex-1 justify-center items-center bg-black">
@@ -230,7 +243,6 @@ const ImageEditorScreen = ({ navigation }) => {
               horizontal
               showsHorizontalScrollIndicator={false}
               className="flex-grow-0"
-              contentContainerStyle=""
             >
               {tools.map((tool) => (
                 <TouchableOpacity
@@ -238,23 +250,37 @@ const ImageEditorScreen = ({ navigation }) => {
                   className={`flex items-center w-24 justify-center py-5 p-3 mx-1 rounded-xl ${
                     selectedTool === tool.id ? "bg-primary" : ""
                   }`}
-                  onPress={() => {
-                    setSelectedTool(tool.id);
-                    tool.action();
-                  }}
+                  onPress={() => handleToolSelect(tool.id)}
                 >
                   <tool.icon size={24} color="#ffffff" />
-                  <Text
-                    className={`mt-1 text-xs text-center 
-                      text-white
-                    `}
-                  >
+                  <Text className="mt-1 text-xs text-center text-white">
                     {tool.name}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
+
+          {/* Show Slider when Contrast is selected */}
+          {isContrastVisible && (
+            <View className="px-5 pb-4">
+              <Text className="text-white text-center mb-2">Edit</Text>
+              <Slider
+                style={{ width: "100%", height: 40 }}
+                minimumValue={1}
+                maximumValue={100}
+                step={1}
+                value={contrastValue}
+                onValueChange={handleContrastChange}
+                minimumTrackTintColor="#FFFFFF"
+                maximumTrackTintColor="#000000"
+                thumbTintColor="#0000FF"
+              />
+              <Text className="text-white text-center mt-2">
+                Contrast: {contrastValue}
+              </Text>
+            </View>
+          )}
         </>
       ) : (
         <Text className="text-lg text-gray-600 text-center">
