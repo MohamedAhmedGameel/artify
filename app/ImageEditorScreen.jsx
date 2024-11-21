@@ -12,24 +12,20 @@ import * as MediaLibrary from "expo-media-library";
 import { cropImage, applyFilter, rotateImage } from "./imageUtils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute } from "@react-navigation/native";
-import { imageToMatrix, matrixToImageUri } from "./imageProcessing";
+import { imageToMatrix } from "./imageProcessing";
 import {
   Crop,
-  RotateCcw,
-  Image as ImageIcon,
-  Save,
-  Sliders,
-  Sun,
-  Contrast,
-  CloudSnow,
-  Droplet,
-  Sunset,
-  Coffee,
-  Moon,
   ArrowLeft,
   Download,
   Undo,
   Redo,
+  RotateCcw,
+  Image as ImageIcon,
+  Save,
+  Sun,
+  Contrast,
+  Droplet,
+  Filter,
 } from "lucide-react-native";
 import { Canvas, Image, useImage } from "@shopify/react-native-skia";
 import { StatusBar } from "expo-status-bar";
@@ -41,40 +37,51 @@ const imageHeight = height - 300; // Height of the image as displayed
 const ImageEditorScreen = ({ navigation }) => {
   const route = useRoute();
   const imageUri = route?.params?.imageUri;
-  const [editedImageUri, setEditedImageUri] = useState(
-    useImage("../assets/LandingBg.jpg")
-  );
+
+  const [editedImageUri, setEditedImageUri] = useState(imageUri);
   const [hasPermission, setHasPermission] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
-  const [isContrastVisible, setIsContrastVisible] = useState(false); // State to toggle visibility
+  const [brightnessValue, setBrightnessValue] = useState(1);
+  const [contrastValue, setContrastValue] = useState(1);
+  const [saturationValue, setSaturationValue] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isBrightnessVisible, setIsBrightnessVisible] = useState();
+  const [isContrastVisible, setIsContrastVisible] = useState();
+  const [isSaturationVisible, setIsSaturationVisible] = useState();
+  const editedImage = useImage(editedImageUri);
 
-  const editedImage = useImage(imageUri);
-
-  const [imageMatrix, setImageMatrix] = useState(null);
-  const [contrastValue, setContrastValue] = useState(1); // For the contrast slider
-
-  useEffect(() => {
-    const loadImage = async () => {
-      if (imageUri) {
-        try {
-          const matrix = await imageToMatrix(imageUri);
-          setImageMatrix(matrix);
-        } catch (error) {
-          console.error("Error converting image to matrix:", error);
-        }
-      }
-    };
-    loadImage();
-  }, [imageUri]);
+  const filters = [
+    { id: "grayscale", name: "Grayscale" },
+    { id: "sepia", name: "Sepia" },
+    { id: "cool", name: "Cool" },
+    { id: "warm", name: "Warm" },
+    { id: "vintage", name: "Vintage" },
+  ];
 
   const tools = [
     {
-      id: "crop",
-      name: "Crop",
-      icon: Crop,
-      action: async () => {
-        setIsCrop(true);
-      },
+      id: "brightness",
+      name: "Brightness",
+      icon: Sun,
+      action: () => handleToolSelect("brightness"),
+    },
+    {
+      id: "contrast",
+      name: "Contrast",
+      icon: Contrast,
+      action: () => handleToolSelect("contrast"),
+    },
+    {
+      id: "saturation",
+      name: "Saturation",
+      icon: Droplet,
+      action: () => handleToolSelect("saturation"),
+    },
+    {
+      id: "filters",
+      name: "Filters",
+      icon: Filter,
+      action: () => handleToolSelect("filters"),
     },
     {
       id: "rotate",
@@ -91,101 +98,24 @@ const ImageEditorScreen = ({ navigation }) => {
       icon: ImageIcon,
       action: () => setEditedImageUri(imageUri),
     },
-    {
-      id: "brightness",
-      name: "Brightness",
-      icon: Sun,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "brightness");
-        setEditedImageUri(filteredUri);
-      },
-    },
-    {
-      id: "contrast",
-      name: "Contrast",
-      icon: Contrast,
-      action: () => {
-        setSelectedTool("contrast");
-      },
-    },
-    {
-      id: "grayscale",
-      name: "Grayscale",
-      icon: Sliders,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "grayscale");
-        setEditedImageUri(filteredUri);
-      },
-    },
-    {
-      id: "sepia",
-      name: "Sepia",
-      icon: Coffee,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "sepia");
-        setEditedImageUri(filteredUri);
-      },
-    },
-    {
-      id: "cool",
-      name: "Cool",
-      icon: CloudSnow,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "cool");
-        setEditedImageUri(filteredUri);
-      },
-    },
-    {
-      id: "warm",
-      name: "Warm",
-      icon: Sunset,
-      action: async () => {
-        // const filteredUri = await applyFilter(imageMatrix, "warm");
-        // setEditedImageUri(filteredUri);
-      },
-    },
-    {
-      id: "vintage",
-      name: "Vintage",
-      icon: Moon,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "vintage");
-        setEditedImageUri(filteredUri);
-      },
-    },
-    {
-      id: "saturation",
-      name: "Saturation",
-      icon: Droplet,
-      action: async () => {
-        const filteredUri = await applyFilter(editedImageUri, "saturate");
-        setEditedImageUri(filteredUri);
-      },
-    },
   ];
+  
 
-  const handleToolSelect = (toolId) => {
-    setSelectedTool(toolId);
-    if (toolId === "contrast") {
-      setIsContrastVisible(!isContrastVisible); // Toggle the visibility of the contrast slider
-    } else {
-      setIsContrastVisible(false); // Hide the contrast slider if another tool is selected
-    }
+  const handleAdjustment = async () => {
+    const adjustedUri = await applyFilter(
+      imageUri,
+      "adjust",
+      brightnessValue,
+      contrastValue,
+      saturationValue
+    );
+    setEditedImageUri(adjustedUri);
   };
 
-  useEffect(() => {
-    const requestPermission = async () => {
-      const { granted } = await MediaLibrary.requestPermissionsAsync();
-      setHasPermission(granted);
-      if (!granted) {
-        Alert.alert(
-          "Permission Required",
-          "Gallery access is needed to save images."
-        );
-      }
-    };
-    requestPermission();
-  }, []);
+  const handleFilterApply = async (filter) => {
+    const filteredUri = await applyFilter(imageUri, filter);
+    setEditedImageUri(filteredUri);
+  };
 
   const saveImage = async () => {
     if (!hasPermission) {
@@ -205,11 +135,40 @@ const ImageEditorScreen = ({ navigation }) => {
     }
   };
 
-  const handleContrastChange = (value) => {
-    setContrastValue(value);
-    const filteredUri = applyFilter(editedImageUri, "contrast", value);
-    setEditedImageUri(filteredUri);
+
+  const handleToolSelect = (toolId) => {
+    if (selectedTool === toolId) {
+      setSelectedTool(null);
+      setIsBrightnessVisible(false);
+      setIsContrastVisible(false);
+      setIsSaturationVisible(false);
+      setShowFilters(false);
+    } 
+    else {
+      setSelectedTool(toolId);
+      setIsBrightnessVisible(toolId === "brightness");
+      setIsContrastVisible(toolId === "contrast");
+      setIsSaturationVisible(toolId === "saturation");
+      setShowFilters(toolId === "filters");
+    }
   };
+  
+  
+
+
+  useEffect(() => {
+    const requestPermission = async () => {
+      const { granted } = await MediaLibrary.requestPermissionsAsync();
+      setHasPermission(granted);
+      if (!granted) {
+        Alert.alert(
+          "Permission Required",
+          "Gallery access is needed to save images."
+        );
+      }
+    };
+    requestPermission();
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-black">
@@ -223,70 +182,143 @@ const ImageEditorScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {editedImage ? (
-        <>
-          <View className="flex-1 justify-center items-center bg-black">
-            <Canvas style={{ width, height: height - 300 }}>
-              <Image
-                image={editedImage}
-                x={0}
-                y={0}
-                width={imageWidth}
-                height={imageHeight}
-                fit="contain"
-              />
-            </Canvas>
-          </View>
+      <View className="flex-1 justify-center items-center bg-black">
+        {editedImage ? (
+          <Canvas style={{ width, height: imageHeight }}>
+            <Image
+              image={editedImage}
+              x={0}
+              y={0}
+              width={imageWidth}
+              height={imageHeight}
+              fit="contain"
+            />
+          </Canvas>
+        ) : (
+          <Text className="text-lg text-gray-600 text-center">
+            No image selected.
+          </Text>
+        )}
+      </View>
 
-          <View className="pt-2 pb-4 bg-neutral-900 rounded-t-xl">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="flex-grow-0"
-            >
-              {tools.map((tool) => (
+      <View className="pt-2 pb-4 bg-neutral-900 rounded-t-xl">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-grow-0"
+        >
+          {tools.map((tool) => (
                 <TouchableOpacity
                   key={tool.id}
                   className={`flex items-center w-24 justify-center py-5 p-3 mx-1 rounded-xl ${
                     selectedTool === tool.id ? "bg-primary" : ""
                   }`}
-                  onPress={() => handleToolSelect(tool.id)}
-                >
-                  <tool.icon size={24} color="#ffffff" />
-                  <Text className="mt-1 text-xs text-center text-white">
-                    {tool.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Show Slider when Contrast is selected */}
-          {isContrastVisible && (
-            <View className="px-5 pb-4">
-              <Text className="text-white text-center mb-2">Edit</Text>
-              <Slider
-                style={{ width: "100%", height: 40 }}
-                minimumValue={1}
-                maximumValue={100}
-                step={1}
-                value={contrastValue}
-                onValueChange={handleContrastChange}
-                minimumTrackTintColor="#FFFFFF"
-                maximumTrackTintColor="#000000"
-                thumbTintColor="#0000FF"
-              />
-              <Text className="text-white text-center mt-2">
-                Contrast: {contrastValue}
+              onPress={tool.action}
+            >
+              <tool.icon size={24} color="#ffffff" />
+              <Text className="mt-2 text-xs text-center text-white">
+                {tool.name}
               </Text>
-            </View>
-          )}
-        </>
-      ) : (
-        <Text className="text-lg text-gray-600 text-center">
-          No image selected.
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {isBrightnessVisible && (
+  <View className="px-5 pb-4">
+    <Text className="text-white text-center mb-2">Brightness</Text>
+    <Slider
+      style={{ width: "100%", height: 40 }}
+      minimumValue={-100}
+      maximumValue={100}
+      step={1}
+      value={brightnessValue}
+      onValueChange={(value) => setBrightnessValue(value)}
+      onSlidingComplete={() => handleAdjustment("brightness")}
+      minimumTrackTintColor="#FFFFFF"
+      maximumTrackTintColor="#000000"
+      thumbTintColor="#0000FF"
+    />
+    <Text className="text-white text-center mt-2">
+      Value: {brightnessValue}
+    </Text>
+  </View>
+)}
+
+{isContrastVisible && (
+  <View className="px-5 pb-4">
+    <Text className="text-white text-center mb-2">Contrast</Text>
+    <Slider
+      style={{ width: "100%", height: 40 }}
+      minimumValue={1}
+      maximumValue={10}
+      step={1}
+      value={contrastValue}
+      onValueChange={(value) => setContrastValue(value)}
+      onSlidingComplete={() => handleAdjustment("contrast")}
+      minimumTrackTintColor="#FFFFFF"
+      maximumTrackTintColor="#000000"
+      thumbTintColor="#0000FF"
+    />
+    <Text className="text-white text-center mt-2">
+      Value: {contrastValue}
+    </Text>
+  </View>
+)}
+
+{isSaturationVisible && (
+  <View className="px-5 pb-4">
+    <Text className="text-white text-center mb-2">Saturation</Text>
+    <Slider
+      style={{ width: "100%", height: 40 }}
+      minimumValue={1}
+      maximumValue={10}
+      step={1}
+      value={saturationValue}
+      onValueChange={(value) => setSaturationValue(value)}
+      onSlidingComplete={() => handleAdjustment("saturation")}
+      minimumTrackTintColor="#FFFFFF"
+      maximumTrackTintColor="#000000"
+      thumbTintColor="#0000FF"
+    />
+    <Text className="text-white text-center mt-2">
+      Value: {saturationValue}
+    </Text>
+  </View>
+)}
+
+
+{showFilters && (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    style={{ marginTop: 10, paddingHorizontal: 5 }}
+    className="flex-grow-0"
+  >
+    {filters.map((filter) => (
+      <TouchableOpacity
+        key={filter.id}
+        onPress={() => handleFilterApply(filter.id)}
+        className={`flex items-center justify-center w-24 py-5 mx-1 rounded-md ${
+          selectedTool === filter.id ? "bg-primary" : "bg-neutral-700"
+        }`}
+        style={{
+          borderWidth: 1,
+          borderColor: selectedTool === filter.id ? "#1E90FF" : "#333",
+        }}
+      >
+        <Text
+          className={`text-xs text-center ${
+            selectedTool === filter.id ? "text-white" : "text-gray-200"
+          }`}
+        >
+          {filter.name}
         </Text>
-      )}
+      </TouchableOpacity>
+    ))}
+  </ScrollView>
+)}
+
     </SafeAreaView>
   );
 };
