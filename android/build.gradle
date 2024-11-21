@@ -38,4 +38,4 @@ allprojects {
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
     }
-}
+}/home/mohamed/Downloads/opencv-4.10.0-android-sdk/OpenCV-android-sdk/sdk
