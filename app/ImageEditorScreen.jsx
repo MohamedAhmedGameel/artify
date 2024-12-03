@@ -30,9 +30,9 @@ import {
 import { Canvas, Image, useImage } from "@shopify/react-native-skia";
 import { StatusBar } from "expo-status-bar";
 
-const { width, height } = Dimensions.get("window"); // Get screen dimensions
-const imageWidth = width; // Width of the image as displayed
-const imageHeight = height - 300; // Height of the image as displayed
+const { width, height } = Dimensions.get("window"); 
+const imageWidth = width; 
+const imageHeight = height - 300; 
 
 const ImageEditorScreen = ({ navigation }) => {
   const route = useRoute();
@@ -99,7 +99,6 @@ const ImageEditorScreen = ({ navigation }) => {
       action: () => setEditedImageUri(imageUri),
     },
   ];
-  
 
   const handleAdjustment = async () => {
     const adjustedUri = await applyFilter(
@@ -135,7 +134,6 @@ const ImageEditorScreen = ({ navigation }) => {
     }
   };
 
-
   const handleToolSelect = (toolId) => {
     if (selectedTool === toolId) {
       setSelectedTool(null);
@@ -143,8 +141,7 @@ const ImageEditorScreen = ({ navigation }) => {
       setIsContrastVisible(false);
       setIsSaturationVisible(false);
       setShowFilters(false);
-    } 
-    else {
+    } else {
       setSelectedTool(toolId);
       setIsBrightnessVisible(toolId === "brightness");
       setIsContrastVisible(toolId === "contrast");
@@ -152,9 +149,6 @@ const ImageEditorScreen = ({ navigation }) => {
       setShowFilters(toolId === "filters");
     }
   };
-  
-  
-
 
   useEffect(() => {
     const requestPermission = async () => {
@@ -182,7 +176,7 @@ const ImageEditorScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View className="flex-1 justify-center items-center bg-black">
+      <View className="flex-1 mt-9 bg-black">
         {editedImage ? (
           <Canvas style={{ width, height: imageHeight }}>
             <Image
@@ -201,124 +195,125 @@ const ImageEditorScreen = ({ navigation }) => {
         )}
       </View>
 
-      <View className="pt-2 pb-4 bg-neutral-900 rounded-t-xl">
+      <View className=" bg-neutral-900">
+        {/* Brightness Slider Section */}
+        {isBrightnessVisible && (
+          <View className="px-5 pb-4 pt-2 border-slate-300 border-b-2">
+            <Slider
+              style={{ width: "100%", height: 40 }}
+              minimumValue={-100}
+              maximumValue={100}
+              step={1}
+              value={brightnessValue}
+              onValueChange={(value) => setBrightnessValue(value)}
+              onSlidingComplete={() => handleAdjustment("brightness")}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#000000"
+              thumbTintColor="#0000FF"
+            />
+            <Text className="text-white text-center mt-2 ">
+              Brightness: {brightnessValue}
+            </Text>
+          </View>
+        )}
+        {isContrastVisible && (
+        <View className="px-5 pb-4 pt-2 border-slate-300 border-b-2">
+          <Slider
+            style={{ width: "100%", height: 40 }}
+            minimumValue={1}
+            maximumValue={10}
+            step={1}
+            value={contrastValue}
+            onValueChange={(value) => setContrastValue(value)}
+            onSlidingComplete={() => handleAdjustment("contrast")}
+            minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="#000000"
+            thumbTintColor="#0000FF"
+          />
+          <Text className="text-white text-center mt-2">
+            Contrast: {contrastValue}
+          </Text>
+        </View>
+      )}
+
+      {isSaturationVisible && (
+        <View className="px-5 pb-4 pt-2 border-slate-300 border-b-2">
+          <Slider
+            style={{ width: "100%", height: 40 }}
+            minimumValue={1}
+            maximumValue={10}
+            step={1}
+            value={saturationValue}
+            onValueChange={(value) => setSaturationValue(value)}
+            onSlidingComplete={() => handleAdjustment("saturation")}
+            minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="#000000"
+            thumbTintColor="#0000FF"
+          />
+          <Text className="text-white text-center mt-2">
+            Saturation: {saturationValue}
+          </Text>
+        </View>
+      )}
+      {showFilters && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="flex-grow-0"
+          style={{ marginTop: 10, paddingHorizontal: 5 }}
+          className="flex-grow-0 border-slate-300 p-3 border-b-2"
         >
-          {tools.map((tool) => (
-                <TouchableOpacity
-                  key={tool.id}
-                  className={`flex items-center w-24 justify-center py-5 p-3 mx-1 rounded-xl ${
-                    selectedTool === tool.id ? "bg-primary" : ""
-                  }`}
-              onPress={tool.action}
+          {filters.map((filter) => (
+            <TouchableOpacity
+              key={filter.id}
+              onPress={() => handleFilterApply(filter.id)}
+              className={`flex items-center justify-center w-24 py-5 mx-1 rounded-md ${
+                selectedTool === filter.id ? "bg-primary" : "bg-neutral-700"
+              }`}
+              style={{
+                borderWidth: 1,
+                borderColor: selectedTool === filter.id ? "#1E90FF" : "#333",
+              }}
             >
-              <tool.icon size={24} color="#ffffff" />
-              <Text className="mt-2 text-xs text-center text-white">
-                {tool.name}
+              <Text
+                className={`text-xs text-center ${
+                  selectedTool === filter.id ? "text-white" : "text-gray-200"
+                }`}
+              >
+                {filter.name}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+      )}
+
+        {/* Tools Bar Section */}
+        <View className="pt-2 pb-4 bg-neutral-900 rounded-t-xl">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="flex-grow-0"
+          >
+            {tools.map((tool) => (
+              <TouchableOpacity
+                key={tool.id}
+                className={`flex items-center w-24 justify-center py-5 p-3 mx-1 rounded-xl ${
+                  selectedTool === tool.id ? "bg-primary" : ""
+                }`}
+                onPress={tool.action}
+              >
+                <tool.icon size={24} color="#ffffff" />
+                <Text className="mt-2 text-xs text-center text-white">
+                  {tool.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+        
       </View>
 
-      {isBrightnessVisible && (
-  <View className="px-5 pb-4">
-    <Text className="text-white text-center mb-2">Brightness</Text>
-    <Slider
-      style={{ width: "100%", height: 40 }}
-      minimumValue={-100}
-      maximumValue={100}
-      step={1}
-      value={brightnessValue}
-      onValueChange={(value) => setBrightnessValue(value)}
-      onSlidingComplete={() => handleAdjustment("brightness")}
-      minimumTrackTintColor="#FFFFFF"
-      maximumTrackTintColor="#000000"
-      thumbTintColor="#0000FF"
-    />
-    <Text className="text-white text-center mt-2">
-      Value: {brightnessValue}
-    </Text>
-  </View>
-)}
 
-{isContrastVisible && (
-  <View className="px-5 pb-4">
-    <Text className="text-white text-center mb-2">Contrast</Text>
-    <Slider
-      style={{ width: "100%", height: 40 }}
-      minimumValue={1}
-      maximumValue={10}
-      step={1}
-      value={contrastValue}
-      onValueChange={(value) => setContrastValue(value)}
-      onSlidingComplete={() => handleAdjustment("contrast")}
-      minimumTrackTintColor="#FFFFFF"
-      maximumTrackTintColor="#000000"
-      thumbTintColor="#0000FF"
-    />
-    <Text className="text-white text-center mt-2">
-      Value: {contrastValue}
-    </Text>
-  </View>
-)}
-
-{isSaturationVisible && (
-  <View className="px-5 pb-4">
-    <Text className="text-white text-center mb-2">Saturation</Text>
-    <Slider
-      style={{ width: "100%", height: 40 }}
-      minimumValue={1}
-      maximumValue={10}
-      step={1}
-      value={saturationValue}
-      onValueChange={(value) => setSaturationValue(value)}
-      onSlidingComplete={() => handleAdjustment("saturation")}
-      minimumTrackTintColor="#FFFFFF"
-      maximumTrackTintColor="#000000"
-      thumbTintColor="#0000FF"
-    />
-    <Text className="text-white text-center mt-2">
-      Value: {saturationValue}
-    </Text>
-  </View>
-)}
-
-
-{showFilters && (
-  <ScrollView
-    horizontal
-    showsHorizontalScrollIndicator={false}
-    style={{ marginTop: 10, paddingHorizontal: 5 }}
-    className="flex-grow-0"
-  >
-    {filters.map((filter) => (
-      <TouchableOpacity
-        key={filter.id}
-        onPress={() => handleFilterApply(filter.id)}
-        className={`flex items-center justify-center w-24 py-5 mx-1 rounded-md ${
-          selectedTool === filter.id ? "bg-primary" : "bg-neutral-700"
-        }`}
-        style={{
-          borderWidth: 1,
-          borderColor: selectedTool === filter.id ? "#1E90FF" : "#333",
-        }}
-      >
-        <Text
-          className={`text-xs text-center ${
-            selectedTool === filter.id ? "text-white" : "text-gray-200"
-          }`}
-        >
-          {filter.name}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </ScrollView>
-)}
-
+      
     </SafeAreaView>
   );
 };
