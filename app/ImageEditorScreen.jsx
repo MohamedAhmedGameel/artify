@@ -57,7 +57,7 @@ const ImageEditorScreen = ({ }) => {
   const [isContrastVisible, setIsContrastVisible] = useState();
   const [isSaturationVisible, setIsSaturationVisible] = useState();
   const [selectedIntensityTool, setSelectedIntensityTool] = useState(null);
-  const [ThresholdVisible, setThresholdVisible] = useState(false);
+  const [thresholdingVisible, setThresholdingVisible] = useState(false);
   const [selectedThresholdTool, setSelectedThresholdTool] = useState(null);
   const [intensityVisible, setIntensityVisible] = useState(false);
   const [selectedBlurTool, setSelectedBlurTool] = useState(null);
@@ -76,7 +76,7 @@ const ImageEditorScreen = ({ }) => {
     { id: "power_law", name: "Power Law" },
   ];
 
-  const ThresholdTools = [
+  const ThresholdingTools = [
     { id: "simple", name: "Simple" },
     { id: "segmentation", name: "Segmentation" },
     { id: "otsu", name: "Otsu" },
@@ -124,10 +124,10 @@ const ImageEditorScreen = ({ }) => {
     //   action: () => handleToolSelect("Histogram equalization"),
     // },
     {
-      id: "Threshold",
-      name: "Threshold",
+      id: "Thresholding",
+      name: "Thresholding",
       icon: Radar,
-      action: () => handleToolSelect("Threshold"),
+      action: () => handleToolSelect("Thresholding"),
     },
     {
       id: "Blur",
@@ -219,7 +219,7 @@ const ImageEditorScreen = ({ }) => {
       setIsSaturationVisible(false);
       setShowFilters(false);
       setIntensityVisible(null);
-      setThresholdVisible(false);
+      setThresholdingVisible(false);
     } else {
       setSelectedTool(toolId);
       setIsBrightnessVisible(toolId === "brightness");
@@ -227,7 +227,7 @@ const ImageEditorScreen = ({ }) => {
       setIsSaturationVisible(toolId === "saturation");
       setShowFilters(toolId === "filters");
       setIntensityVisible(toolId === "Intensitytransformation");
-      setThresholdVisible(toolId === "Threshold");
+      setThresholdingVisible(toolId === "Thresholding");
     }
   };
 
@@ -379,14 +379,14 @@ const ImageEditorScreen = ({ }) => {
             </ScrollView>
           </View>
         )}
-        {ThresholdVisible && (
+        {thresholdingVisible && (
           <View className="px-5 pb-4 pt-2 flex items-center border-slate-300 border-b-2">
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               className="flex-grow-0"
             >
-              {ThresholdTools.map((tool) => (
+              {ThresholdingTools.map((tool) => (
                 <TouchableOpacity
                   key={tool.id}
                   onPress={() => handleThresholdClick(tool.id)}
