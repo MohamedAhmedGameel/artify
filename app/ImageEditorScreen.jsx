@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Slider from "@react-native-community/slider";
+import ImageView from "../components/Image";
 import {
   View,
   ScrollView,
@@ -8,6 +9,7 @@ import {
   Dimensions,
   Text,
 } from "react-native";
+import WebView from "react-native-webview";
 import * as MediaLibrary from "expo-media-library";
 import { cropImage, applyFilter, rotateImage } from "./imageUtils";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,15 +36,17 @@ import {
 import { Canvas, Image, useImage } from "@shopify/react-native-skia";
 import { StatusBar } from "expo-status-bar";
 import { useNavigation } from "@react-navigation/native";
+import { applyImageTransformations } from "./imageMunipulation";
 
 const { width, height } = Dimensions.get("window");
 const imageWidth = width;
 const imageHeight = height - 400;
 
-const ImageEditorScreen = ({ }) => {
+const ImageEditorScreen = ({}) => {
   const navigation = useNavigation();
   const route = useRoute();
   const imageUri = route?.params?.imageUri;
+  const webviewRef = useRef(null);
 
   const [editedImageUri, setEditedImageUri] = useState(imageUri);
   const [hasPermission, setHasPermission] = useState(false);
@@ -52,16 +56,31 @@ const ImageEditorScreen = ({ }) => {
   const [brightnessValue, setBrightnessValue] = useState(1);
   const [contrastValue, setContrastValue] = useState(1);
   const [saturationValue, setSaturationValue] = useState(1);
+  const [sharpnessValue, setSharpnessValue] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [thresholdValue, setThresholdValue] = useState(254);
+  const [blurValue, setBlurValue] = useState(254);
+  const [rotateValue, setRotateValue] = useState(0);
   const [isBrightnessVisible, setIsBrightnessVisible] = useState();
   const [isContrastVisible, setIsContrastVisible] = useState();
   const [isSaturationVisible, setIsSaturationVisible] = useState();
+  const [isSharpnessVisible, setIsSharpnessVisible] = useState();
   const [selectedIntensityTool, setSelectedIntensityTool] = useState(null);
   const [thresholdVisible, setThresholdVisible] = useState(false);
   const [selectedThresholdTool, setSelectedThresholdTool] = useState(null);
   const [intensityVisible, setIntensityVisible] = useState(false);
   const [selectedBlurTool, setSelectedBlurTool] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState(null);
+  const [filterType, setFilterType] = useState("");
+  const [newUri, setNewUri] = useState(false);
+  const [lastUri, setLastUri] = useState("");
+
+  useEffect(() => {
+    if (lastUri !== editedImageUri) {
+      setNewUri(true);
+      setLastUri(editedImageUri);
+    }
+  }, [editedImageUri]);
 
   const filters = [
     { id: "grayscale", name: "Grayscale" },
@@ -104,6 +123,12 @@ const ImageEditorScreen = ({ }) => {
       name: "Saturation",
       icon: Droplet,
       action: () => handleToolSelect("saturation"),
+    },
+    {
+      id: "sharpness",
+      name: "Sharpness",
+      icon: Droplet,
+      action: () => handleToolSelect("sharpness"),
     },
     {
       id: "filters",
@@ -158,7 +183,8 @@ const ImageEditorScreen = ({ }) => {
       "adjust",
       brightnessValue,
       contrastValue,
-      saturationValue
+      saturationValue,
+      sharpnessValue
     );
     setEditedImageUri(adjustedUri);
   };
@@ -225,6 +251,7 @@ const ImageEditorScreen = ({ }) => {
       setIsBrightnessVisible(toolId === "brightness");
       setIsContrastVisible(toolId === "contrast");
       setIsSaturationVisible(toolId === "saturation");
+      setIsSharpnessVisible(toolId === "sharpness");
       setShowFilters(toolId === "filters");
       setIntensityVisible(toolId === "Intensitytransformation");
       setThresholdVisible(toolId === "Threshold");
@@ -244,6 +271,21 @@ const ImageEditorScreen = ({ }) => {
     };
     requestPermission();
   }, []);
+  const handleTransformation = async () => {
+    const result = await applyImageTransformations(
+      editedImageUri,
+      brightnessValue,
+      contrastValue,
+      saturationValue,
+      sharpnessValue,
+      filterType,
+      thresholdValue,
+      blurValue,
+      rotateValue
+    );
+    setNewUri(false);
+    webviewRef.current.injectJavaScript(result);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-black">
@@ -263,18 +305,13 @@ const ImageEditorScreen = ({ }) => {
         </View>
       </View>
 
-      <View className="flex-1 mt-9 bg-black">
+      <View className="flex-1 justify-center items-center bg-black">
         {editedImage ? (
-          <Canvas style={{ width, height: imageHeight }}>
-            <Image
-              image={editedImage}
-              x={0}
-              y={0}
-              width={imageWidth}
-              height={imageHeight}
-              fit="contain"
-            />
-          </Canvas>
+          <ImageView
+            editedImageUri={editedImageUri}
+            width={imageWidth}
+            height={imageHeight}
+          />
         ) : (
           <Text className="text-lg text-gray-600 text-center">
             No image selected.
@@ -284,61 +321,127 @@ const ImageEditorScreen = ({ }) => {
 
       <View className=" bg-neutral-900">
         {isBrightnessVisible && (
-          <View className="px-5 pb-4 pt-2 border-slate-300 border-b-2">
+          <View className="px-5 pb-4">
+            <Text className="text-white text-center mb-2">Brightness</Text>
             <Slider
               style={{ width: "100%", height: 40 }}
               minimumValue={-100}
               maximumValue={100}
               step={1}
               value={brightnessValue}
-              onValueChange={(value) => setBrightnessValue(value)}
-              onSlidingComplete={() => handleAdjustment("brightness")}
+              onValueChange={(value) => {
+                setBrightnessValue(value);
+              }}
+              onSlidingComplete={async (value) => {
+                setBrightnessValue(value);
+
+                handleAdjustment("brightness");
+                handleTransformation();
+              }}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#000000"
               thumbTintColor="#0000FF"
             />
-            <Text className="text-white text-center mt-2 ">
-              Brightness: {brightnessValue}
+            <Text className="text-white text-center mt-2">
+              Value: {brightnessValue}
             </Text>
           </View>
         )}
 
         {isContrastVisible && (
-          <View className="px-5 pb-4 pt-2 border-slate-300 border-b-2">
+          <View className="px-5 pb-4">
+            <Text className="text-white text-center mb-2">Contrast</Text>
             <Slider
               style={{ width: "100%", height: 40 }}
-              minimumValue={1}
-              maximumValue={10}
-              step={1}
-              value={contrastValue}
-              onValueChange={(value) => setContrastValue(value)}
-              onSlidingComplete={() => handleAdjustment("contrast")}
+              minimumValue={1} // Minimum value for contrast, cannot go lower than 1
+              maximumValue={2} // Maximum contrast level
+              step={0.2} // Step of 1 for smooth adjustment
+              value={contrastValue} // Controlled value based on the state
+              onValueChange={(value) => {
+                console.log("Contrast Value on Change:", value); // Log current contrast value
+                setContrastValue(value); // Update the contrast value
+              }}
+              onSlidingComplete={async (value) => {
+                if (typeof value !== "number" || isNaN(value)) {
+                  console.error("Invalid contrast value:", value);
+                  return;
+                }
+                setContrastValue(value);
+                console.log("Contrast Value:", value); // Check the value here
+                handleTransformation();
+              }}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#000000"
               thumbTintColor="#0000FF"
             />
+
             <Text className="text-white text-center mt-2">
-              Contrast: {contrastValue}
+              Value: {contrastValue}
             </Text>
           </View>
         )}
 
         {isSaturationVisible && (
-          <View className="px-5 pb-4 pt-2 border-slate-300 border-b-2">
+          <View className="px-5 pb-4">
+            <Text className="text-white text-center mb-2">Saturation</Text>
+            <Slider
+              style={{ width: "100%", height: 40 }}
+              minimumValue={-100}
+              maximumValue={100}
+              step={1}
+              value={saturationValue}
+              onValueChange={(value) => {
+                console.log("saturation Value: ", value); // Log value to ensure it's a number
+                setSaturationValue(value);
+              }}
+              onSlidingComplete={async (value) => {
+                if (typeof value !== "number") {
+                  console.error("Invalid saturation value:", value);
+                  return;
+                }
+
+                setIsSaturationVisible(value);
+                handleTransformation();
+              }}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#000000"
+              thumbTintColor="#0000FF"
+            />
+
+            <Text className="text-white text-center mt-2">
+              Value: {saturationValue}
+            </Text>
+          </View>
+        )}
+
+        {isSharpnessVisible && (
+          <View className="px-5 pb-4">
+            <Text className="text-white text-center mb-2">Sharpness</Text>
             <Slider
               style={{ width: "100%", height: 40 }}
               minimumValue={1}
-              maximumValue={10}
-              step={1}
-              value={saturationValue}
-              onValueChange={(value) => setSaturationValue(value)}
-              onSlidingComplete={() => handleAdjustment("saturation")}
+              maximumValue={2}
+              step={0.1}
+              saturation
+              value={sharpnessValue}
+              onValueChange={(value) => {
+                // You can still update the value dynamically, but don't call the async function yet.
+                setSharpnessValue(value);
+              }}
+              onSlidingComplete={async (value) => {
+                setSharpnessValue(value);
+                // After the slider has finished sliding, perform the actual adjustment
+                handleTransformation();
+
+                // Now call the handle adjustment after the completion of the slider action
+                handleAdjustment("saturation");
+              }}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#000000"
               thumbTintColor="#0000FF"
             />
             <Text className="text-white text-center mt-2">
-              Saturation: {saturationValue}
+              Value: {sharpnessValue}
             </Text>
           </View>
         )}
@@ -457,26 +560,30 @@ const ImageEditorScreen = ({ }) => {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={{ marginTop: 10, paddingHorizontal: 5 }}
-            className="flex-grow-0 border-slate-300 p-3 border-b-2"
+            className="flex-grow-0"
           >
             {filters.map((filter) => (
               <TouchableOpacity
                 key={filter.id}
-                onPress={() => handleFilterClick(filter.id)}
+                onPress={async () => {
+                  setFilterType(filter.id);
+
+                  const [result, base64ProcessedImage] =
+                    await handleFilterApply(editedImageUri, filter.id);
+
+                  webviewRef.current.injectJavaScript(result);
+                }}
                 className={`flex items-center justify-center w-24 py-5 mx-1 rounded-md ${
-                  selectedFilter === filter.id ? "bg-primary" : "bg-neutral-700"
+                  selectedTool === filter.id ? "bg-primary" : "bg-neutral-700"
                 }`}
                 style={{
                   borderWidth: 1,
-                  borderColor:
-                    selectedFilter === filter.id ? "#1E90FF" : "#333",
+                  borderColor: selectedTool === filter.id ? "#1E90FF" : "#333",
                 }}
               >
                 <Text
                   className={`text-xs text-center ${
-                    selectedFilter === filter.id
-                      ? "text-white"
-                      : "text-gray-200"
+                    selectedTool === filter.id ? "text-white" : "text-gray-200"
                   }`}
                 >
                   {filter.name}
@@ -485,7 +592,6 @@ const ImageEditorScreen = ({ }) => {
             ))}
           </ScrollView>
         )}
-
         {/* Tools Bar Section */}
         <View className="pt-2 pb-4 bg-neutral-900 rounded-t-xl">
           <ScrollView
@@ -509,6 +615,54 @@ const ImageEditorScreen = ({ }) => {
             ))}
           </ScrollView>
         </View>
+      </View>
+      <View>
+        <WebView
+          ref={webviewRef}
+          source={{
+            html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <script async src="https://docs.opencv.org/4.5.0/opencv.js" type="text/javascript"></script>
+        </head>
+        <body>
+          <script>
+            
+            function checkOpenCVInitialization() {
+              if (typeof cv !== 'undefined' && cv.onRuntimeInitialized) {
+               
+                console.log("OpenCV initialized");
+                window.ReactNativeWebView.postMessage('POP101');
+              } else {
+                
+                console.log("OpenCV not initialized, retrying...");
+                setTimeout(checkOpenCVInitialization, 1000);
+              }
+            }
+
+           
+            checkOpenCVInitialization();
+          </script>
+        </body>
+      </html>
+    `,
+          }}
+          onMessage={(event) => {
+            const message = event.nativeEvent.data;
+            console.log("lol");
+            if (message.startsWith("data:image/png;base64,")) {
+              console.log("pop");
+
+              const uri = `data:image/png;base64,${message.split(",")[1]}`;
+              setEditedImageUri(uri); // Update the state with the new image
+            } else {
+              console.log("WebView message:", message);
+            }
+          }}
+          javaScriptEnabled={true} // Enable JavaScript in WebView
+          style={{ opacity: 0, height: 0, width: 0, position: "absolute" }} // Invisible WebView
+        />
       </View>
     </SafeAreaView>
   );
