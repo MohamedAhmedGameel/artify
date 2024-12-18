@@ -114,43 +114,6 @@ export default function App() {
     }
   };
 
-  // Function to extract pixel data from the image
-  const getImageMatrix = async (uri) => {
-    const image = new Image();
-    image.src = uri;
-
-    return new Promise((resolve, reject) => {
-      image.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = image.width;
-        canvas.height = image.height;
-        ctx.drawImage(image, 0, 0);
-
-        const imageData = ctx.getImageData(0, 0, image.width, image.height);
-        const pixels = imageData.data;
-
-        // Create matrix
-        const matrix = [];
-        for (let i = 0; i < pixels.length; i += 4) {
-          const row = Math.floor(i / (image.width * 4));
-          const col = (i / 4) % image.width;
-          if (!matrix[row]) {
-            matrix[row] = [];
-          }
-          matrix[row][col] = {
-            r: pixels[i], // Red
-            g: pixels[i + 1], // Green
-            b: pixels[i + 2], // Blue
-            a: pixels[i + 3], // Alpha
-          };
-        }
-        resolve(matrix);
-      };
-      image.onerror = reject;
-    });
-  };
-
   return (
     <View className="flex-1">
       <ImageBackground

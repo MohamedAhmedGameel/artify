@@ -27,13 +27,11 @@ import {
   Contrast,
   Droplet,
   Filter,
-  BookDashed,
   Circle,
-  SwitchCamera,
   Radar,
   Grip,
 } from "lucide-react-native";
-import { Canvas, Image, useImage } from "@shopify/react-native-skia";
+import { useImage } from "@shopify/react-native-skia";
 import { StatusBar } from "expo-status-bar";
 import { useNavigation } from "@react-navigation/native";
 import { applyImageTransformations } from "./imageMunipulation";
@@ -59,6 +57,7 @@ const ImageEditorScreen = ({}) => {
   const [sharpnessValue, setSharpnessValue] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [thresholdValue, setThresholdValue] = useState(254);
+  const [intensityValue, setIntensityValue] = useState(1.6);
   const [blurValue, setBlurValue] = useState(254);
   const [rotateValue, setRotateValue] = useState(0);
   const [isBrightnessVisible, setIsBrightnessVisible] = useState();
@@ -74,6 +73,7 @@ const ImageEditorScreen = ({}) => {
   const [filterType, setFilterType] = useState("");
   const [newUri, setNewUri] = useState(false);
   const [lastUri, setLastUri] = useState("");
+  queue = [];
 
   useEffect(() => {
     if (lastUri !== editedImageUri) {
@@ -88,11 +88,6 @@ const ImageEditorScreen = ({}) => {
     { id: "cool", name: "Cool" },
     { id: "warm", name: "Warm" },
     { id: "vintage", name: "Vintage" },
-  ];
-
-  const intensityTools = [
-    { id: "log", name: "Log" },
-    { id: "power_law", name: "Power Law" },
   ];
 
   const ThresholdTools = [
@@ -140,7 +135,7 @@ const ImageEditorScreen = ({}) => {
       id: "Intensitytransformation",
       name: "Intensity",
       icon: Circle,
-      action: () => handleToolSelect("Intensitytransformation"),
+      action: () => handleTransformation("intensity"),
     },
     // {
     //   id: "Histogram equalization",
@@ -152,7 +147,7 @@ const ImageEditorScreen = ({}) => {
       id: "Threshold",
       name: "Threshold",
       icon: Radar,
-      action: () => handleToolSelect("Threshold"),
+      action: () => handleTransformation("threshold"),
     },
     {
       id: "Blur",
@@ -196,26 +191,6 @@ const ImageEditorScreen = ({}) => {
     } else {
       // Select the new filter
       setSelectedFilter(filter);
-    }
-  };
-
-  const handleIntensityClick = (tool) => {
-    if (selectedIntensityTool === tool) {
-      // Deselect the filter if already selected
-      setSelectedIntensityTool(null);
-    } else {
-      // Select the new filter
-      setSelectedIntensityTool(tool);
-    }
-  };
-
-  const handleThresholdClick = (tool) => {
-    if (selectedThresholdTool === tool) {
-      // Deselect the filter if already selected
-      setSelectedThresholdTool(null);
-    } else {
-      // Select the new filter
-      setSelectedThresholdTool(tool);
     }
   };
 
@@ -271,7 +246,8 @@ const ImageEditorScreen = ({}) => {
     };
     requestPermission();
   }, []);
-  const handleTransformation = async () => {
+  const handleTransformation = async (name) => {
+    queue.push(name);
     const result = await applyImageTransformations(
       editedImageUri,
       brightnessValue,
@@ -280,8 +256,10 @@ const ImageEditorScreen = ({}) => {
       sharpnessValue,
       filterType,
       thresholdValue,
+      intensityValue,
       blurValue,
-      rotateValue
+      rotateValue,
+      queue
     );
     setNewUri(false);
     webviewRef.current.injectJavaScript(result);
@@ -336,7 +314,7 @@ const ImageEditorScreen = ({}) => {
                 setBrightnessValue(value);
 
                 handleAdjustment("brightness");
-                handleTransformation();
+                handleTransformation("contrastAndBrightness");
               }}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#000000"
@@ -368,7 +346,7 @@ const ImageEditorScreen = ({}) => {
                 }
                 setContrastValue(value);
                 console.log("Contrast Value:", value); // Check the value here
-                handleTransformation();
+                handleTransformation("contrastAndBrightness");
               }}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#000000"
@@ -386,9 +364,9 @@ const ImageEditorScreen = ({}) => {
             <Text className="text-white text-center mb-2">Saturation</Text>
             <Slider
               style={{ width: "100%", height: 40 }}
-              minimumValue={-100}
-              maximumValue={100}
-              step={1}
+              minimumValue={0.1}
+              maximumValue={2}
+              step={0.1}
               value={saturationValue}
               onValueChange={(value) => {
                 console.log("saturation Value: ", value); // Log value to ensure it's a number
@@ -401,7 +379,7 @@ const ImageEditorScreen = ({}) => {
                 }
 
                 setIsSaturationVisible(value);
-                handleTransformation();
+                handleTransformation("saturation");
               }}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#000000"
@@ -431,7 +409,7 @@ const ImageEditorScreen = ({}) => {
               onSlidingComplete={async (value) => {
                 setSharpnessValue(value);
                 // After the slider has finished sliding, perform the actual adjustment
-                handleTransformation();
+                handleTransformation("sharpness");
 
                 // Now call the handle adjustment after the completion of the slider action
                 handleAdjustment("saturation");
@@ -443,79 +421,6 @@ const ImageEditorScreen = ({}) => {
             <Text className="text-white text-center mt-2">
               Value: {sharpnessValue}
             </Text>
-          </View>
-        )}
-
-        {intensityVisible && (
-          <View className="px-5 pb-4 pt-2 flex items-center border-slate-300 border-b-2">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="flex-grow-0"
-            >
-              {intensityTools.map((tool) => (
-                <TouchableOpacity
-                  key={tool.id}
-                  onPress={() => handleIntensityClick(tool.id)}
-                  className={`flex items-center justify-center w-28 py-5 mx-6 rounded-md ${
-                    selectedIntensityTool === tool.id
-                      ? "bg-primary"
-                      : "bg-neutral-700"
-                  }`}
-                  style={{
-                    borderWidth: 1,
-                    borderColor:
-                      selectedIntensityTool === tool.id ? "#1E90FF" : "#333",
-                  }}
-                >
-                  <Text
-                    className={`text-xs text-center ${
-                      selectedIntensityTool === tool.id
-                        ? "text-white"
-                        : "text-gray-200"
-                    }`}
-                  >
-                    {tool.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-        {thresholdVisible && (
-          <View className="px-5 pb-4 pt-2 flex items-center border-slate-300 border-b-2">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="flex-grow-0"
-            >
-              {ThresholdTools.map((tool) => (
-                <TouchableOpacity
-                  key={tool.id}
-                  onPress={() => handleThresholdClick(tool.id)}
-                  className={`flex items-center justify-center w-28 py-5 mx-6 rounded-md ${
-                    selectedThresholdTool === tool.id
-                      ? "bg-primary"
-                      : "bg-neutral-700"
-                  }`}
-                  style={{
-                    borderWidth: 1,
-                    borderColor:
-                      selectedThresholdTool === tool.id ? "#1E90FF" : "#333",
-                  }}
-                >
-                  <Text
-                    className={`text-xs text-center ${
-                      selectedThresholdTool === tool.id
-                        ? "text-white"
-                        : "text-gray-200"
-                    }`}
-                  >
-                    {tool.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
           </View>
         )}
         {selectedTool === "Blur" && (
@@ -567,11 +472,7 @@ const ImageEditorScreen = ({}) => {
                 key={filter.id}
                 onPress={async () => {
                   setFilterType(filter.id);
-
-                  const [result, base64ProcessedImage] =
-                    await handleFilterApply(editedImageUri, filter.id);
-
-                  webviewRef.current.injectJavaScript(result);
+                  handleTransformation("filter");
                 }}
                 className={`flex items-center justify-center w-24 py-5 mx-1 rounded-md ${
                   selectedTool === filter.id ? "bg-primary" : "bg-neutral-700"
@@ -650,11 +551,9 @@ const ImageEditorScreen = ({}) => {
           }}
           onMessage={(event) => {
             const message = event.nativeEvent.data;
-            console.log("lol");
             if (message.startsWith("data:image/png;base64,")) {
-              console.log("pop");
-
               const uri = `data:image/png;base64,${message.split(",")[1]}`;
+
               setEditedImageUri(uri); // Update the state with the new image
             } else {
               console.log("WebView message:", message);
