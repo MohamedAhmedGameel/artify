@@ -15,7 +15,6 @@ import { cropImage, applyFilter, rotateImage } from "./imageUtils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute } from "@react-navigation/native";
 import {
-  Crop,
   ArrowLeft,
   Download,
   Undo,
@@ -64,9 +63,7 @@ const ImageEditorScreen = ({}) => {
   const [isContrastVisible, setIsContrastVisible] = useState();
   const [isSaturationVisible, setIsSaturationVisible] = useState();
   const [isSharpnessVisible, setIsSharpnessVisible] = useState();
-  const [selectedIntensityTool, setSelectedIntensityTool] = useState(null);
   const [thresholdVisible, setThresholdVisible] = useState(false);
-  const [selectedThresholdTool, setSelectedThresholdTool] = useState(null);
   const [intensityVisible, setIntensityVisible] = useState(false);
   const [selectedBlurTool, setSelectedBlurTool] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState(null);
@@ -88,12 +85,6 @@ const ImageEditorScreen = ({}) => {
     { id: "cool", name: "Cool" },
     { id: "warm", name: "Warm" },
     { id: "vintage", name: "Vintage" },
-  ];
-
-  const ThresholdTools = [
-    { id: "simple", name: "Simple" },
-    { id: "segmentation", name: "Segmentation" },
-    { id: "otsu", name: "Otsu" },
   ];
   const BlurTools = [
     { id: "Gaussian", name: "Gaussian" },
